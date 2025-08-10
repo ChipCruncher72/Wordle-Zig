@@ -19,7 +19,7 @@ Then run `zig build` and find the executable in `zig-out/bin`
 ```sh
 Wordle-Zig $ zig build
 Wordle-Zig $ ls zig-out/bin
-wordle-term       wordle-term.pdb
+wordle_term       wordle_term.pdb
 ```
 And that's it! All you have to do now is guess the word in six attempts!
 
