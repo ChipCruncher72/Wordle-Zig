@@ -17,7 +17,7 @@ Clone the repository and cd into it
 ```
 Then run `zig build` and find the executable in `zig-out/bin`
 ```sh
-Wordle-Zig $ zig build
+Wordle-Zig $ zig build --release=fast
 Wordle-Zig $ ls zig-out/bin
 wordle_term       wordle_term.pdb
 ```

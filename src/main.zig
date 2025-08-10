@@ -139,15 +139,13 @@ pub fn main() !void {
         .method = .GET,
         .response_storage = .{ .static = &word, },
     }) catch |e| {
-        const stderr = std.io.getStdErr().writer();
-        try stderr.print("ERR: Unable to get a word: {}\n", .{e});
+        std.debug.print("ERR: Unable to get a word: {}\n", .{e});
         return e;
     };
 
     if (res.status.class() != .success) {
-        const stderr = std.io.getStdErr().writer();
-        try stderr.print("ERR: Unable to get a word: {s} ({})\n", .{res.status.phrase() orelse "Unknown", @intFromEnum(res.status)});
-        std.process.exit(1);
+        std.debug.print("ERR: Unable to get a word: {s} ({})\n", .{res.status.phrase() orelse "Unknown", @intFromEnum(res.status)});
+        return error.CouldNotFetchWord;
     }
 
     try playWithWord(allocator, word.items[2..7]);
