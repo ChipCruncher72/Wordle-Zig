@@ -27,3 +27,4 @@ And that's it! All you have to do now is guess the word in six attempts!
 ## Notes
 - You need a stable internet connection if you want to play, the program gets it's words from an API call
 - Report any issues [here](https://github.com/ChipCruncher72/Wordle-Zig/issues/new/choose)
+- Your terminal will need to support true color and not have the enviroment variable `NO_COLOR` set
