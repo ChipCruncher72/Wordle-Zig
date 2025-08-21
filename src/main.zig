@@ -1,5 +1,4 @@
 const std = @import("std");
-const Chameleon = @import("chameleon");
 
 // TODO: Optimize this pile of garbage
 pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {

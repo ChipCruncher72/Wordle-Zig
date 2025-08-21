@@ -13,9 +13,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const cham = b.dependency("chameleon", .{});
-    exe_mod.addImport("chameleon", cham.module("chameleon"));
-
     const exe = b.addExecutable(.{
         .name = "wordle_term",
         .root_module = exe_mod,
