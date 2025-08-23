@@ -2,16 +2,6 @@ const std = @import("std");
 
 // TODO: Optimize this pile of garbage
 pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
-    var cham = Chameleon.initRuntime(.{
-        .allocator = allocator,
-    });
-    defer cham.deinit();
-    if (cham.no_color) {
-        return error.NeedsColor;
-    }
-    _ = cham.black();
-    cham.preset = true;
-
     var word_lcount = std.hash_map.AutoHashMapUnmanaged(u8, usize).empty;
     defer word_lcount.deinit(allocator);
 
@@ -19,39 +9,39 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         try word_lcount.put(allocator, c, (word_lcount.get(c) orelse 0)+1);
     }
 
-    const stdout = std.io.getStdOut().writer();
-    const stdin = std.io.getStdIn().reader();
+    var stdout_buf: [4096]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(stdout_buf[0..]);
+    const stdout = &stdout_writer.interface;
 
-    {
-        const bad = try cham.bgGrey().fmt(" ", .{});
-        const okay = try cham.bgYellow().fmt(" ", .{});
-        const good = try cham.bgGreen().fmt(" ", .{});
-        try stdout.print(
-            \\======================Welcome to wordle!====================
-            \\Keys:
-            \\    - {s}: Letter is not in the word
-            \\    - {s}: Letter is in the word, but not in that position
-            \\    - {s}: Letter is in the word, and in that position
-            \\============================================================
-            \\
-            \\
-        , .{bad, okay, good});
-        allocator.free(bad);
-        allocator.free(okay);
-        allocator.free(good);
-    }
+    var stdin_buf: [4096]u8 = undefined;
+    var stdin_reader = std.fs.File.stdin().reader(stdin_buf[0..]);
+    const stdin = &stdin_reader.interface;
+
+    try stdout.print(
+        \\======================Welcome to wordle!====================
+        \\Keys:
+        \\    - {s}: Letter is not in the word
+        \\    - {s}: Letter is in the word, but not in that position
+        \\    - {s}: Letter is in the word, and in that position
+        \\============================================================
+        \\
+        \\
+    , .{"\x1b[100m \x1b[0m", "\x1b[43m \x1b[0m", "\x1b[42m \x1b[0m"});
 
     var attempts: usize = 1;
     var is_correct = false;
     while (attempts <= 6) {
         try stdout.print("Guess a {} letter word: ", .{word.len});
+        try stdout.flush();
 
-        var guess = std.ArrayListUnmanaged(u8).empty;
-        defer guess.deinit(allocator);
-        try stdin.streamUntilDelimiter(guess.writer(allocator), '\n', null);
-        if (guess.getLastOrNull() == '\n') {
-            _ = guess.pop();
+        var guess: std.ArrayList(u8) = undefined;
+        {
+            var alloc_writer = std.Io.Writer.Allocating.init(allocator);
+           _ = try stdin.streamDelimiter(&alloc_writer.writer, '\n');
+           _ = try stdin.takeByte();
+            guess = alloc_writer.toArrayList();
         }
+        defer guess.deinit(allocator);
         if (guess.getLastOrNull() == '\r') {
             _ = guess.pop();
         }
@@ -65,7 +55,7 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
 
         if (std.mem.eql(u8, guess.items, word)) {
             is_correct = true;
-            try cham.bgGreen().print(stdout, "{s}\n", .{word});
+            try stdout.print("\x1b[30;42m{s}\x1b[0m\n", .{guess.items});
             break;
         }
 
@@ -103,14 +93,17 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
             letter_colors[i] = 0;
         }
 
+        try stdout.writeAll("\x1b[30m");
         for (guess.items, letter_colors) |c, col| {
             switch (col) {
-                0 => try cham.bgGrey().print(stdout, "{c}", .{c}),
-                1 => try cham.bgYellow().print(stdout, "{c}", .{c}),
-                2 => try cham.bgGreen().print(stdout, "{c}", .{c}),
+                0 => try stdout.writeAll("\x1b[100m"),
+                1 => try stdout.writeAll("\x1b[43m"),
+                2 => try stdout.writeAll("\x1b[42m"),
                 else => unreachable,
             }
+            try stdout.writeByte(c);
         }
+        try stdout.writeAll("\x1b[0m");
         try stdout.writeByte('\n');
 
         attempts += 1;
@@ -121,22 +114,27 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
     } else {
         try stdout.print("Better luck next time! The word was {s}\n", .{word});
     }
+    try stdout.flush();
 }
 
 pub fn main() !void {
     const allocator = std.heap.smp_allocator;
+
+    if (std.process.hasEnvVarConstant("NO_COLOR")) {
+        return error.NeedsColor;
+    }
 
     var cli = std.http.Client{
         .allocator = allocator,
     };
     defer cli.deinit();
 
-    var word = try std.ArrayListUnmanaged(u8).initCapacity(allocator, 9);
-    defer word.deinit(allocator);
+    var word: [9]u8 = undefined;
+    var buffer_writer = std.Io.Writer.fixed(word[0..]);
     const res = cli.fetch(.{
         .location = .{ .url = "https://random-word-api.vercel.app/api?words=1&length=5&type=uppercase", },
         .method = .GET,
-        .response_storage = .{ .static = &word, },
+        .response_writer = &buffer_writer,
     }) catch |e| {
         std.debug.print("ERR: Unable to get a word: {}\n", .{e});
         return e;
@@ -147,5 +145,5 @@ pub fn main() !void {
         return error.CouldNotFetchWord;
     }
 
-    try playWithWord(allocator, word.items[2..7]);
+    try playWithWord(allocator, word[2..7]);
 }

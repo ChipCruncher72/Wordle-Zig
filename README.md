@@ -7,7 +7,7 @@ A simple wordle clone written in the [Zig Programming Language](https://ziglang.
 
 ### Prerequisites:
 - [git](https://git-scm.com/)
-- [Zig 0.14.\*](https://github.com/ziglang/zig/releases/tag/0.14.1) (This code will not work with the master branch or any version prior to 0.14)
+- [Zig 0.15.\*](https://ziglang.org/download/) (This code will not work with the master branch or any version prior to 0.15)
 - A working terminal
 
 Clone the repository and cd into it
