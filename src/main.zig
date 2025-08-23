@@ -67,28 +67,24 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         }
 
         // 0 is grey, 1 is yellow, 2 is green
-        for (guess, word, 0..) |gc, wc, i| {
+        for (guess, word, letter_colors) |gc, wc, *let_col| {
             if (!std.mem.containsAtLeastScalar(u8, word, 1, gc)) {
-                letter_colors[i] = 0;
-                continue;
-            }
-            if (gc != wc) {
-                letter_colors[i] = 1;
-                correct_lcount.putAssumeCapacity(gc, (correct_lcount.get(gc) orelse 0)+1);
+                let_col.* = 0;
                 continue;
             }
             if (gc == wc) {
-                letter_colors[i] = 2;
+                let_col.* = 2;
                 correct_lcount.putAssumeCapacity(gc, (correct_lcount.get(gc) orelse 0)+1);
                 continue;
             }
-            letter_colors[i] = 0;
+            let_col.* = 0;
         }
 
-        for (guess, letter_colors) |gc, *let_col| {
-            if (let_col.* == 1 and correct_lcount.get(gc).? > word_lcount.get(gc).?) {
-                let_col.* = 0;
-                correct_lcount.putAssumeCapacity(gc, correct_lcount.get(gc).?-1);
+        for (guess, word, letter_colors) |gc, wc, *let_col| {
+            if (gc != wc and (correct_lcount.get(gc) orelse 0) < word_lcount.get(gc).?) {
+                let_col.* = 1;
+                correct_lcount.putAssumeCapacity(gc, (correct_lcount.get(gc) orelse 0)+1);
+                continue;
             }
         }
 
