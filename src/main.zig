@@ -3,10 +3,12 @@ const std = @import("std");
 // TODO: Optimize this pile of garbage
 pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
     var word_lcount = std.hash_map.AutoHashMapUnmanaged(u8, usize).empty;
+    try word_lcount.ensureTotalCapacity(allocator, 5);
+
     defer word_lcount.deinit(allocator);
 
     for (word) |c| {
-        try word_lcount.put(allocator, c, (word_lcount.get(c) orelse 0)+1);
+        word_lcount.putAssumeCapacity(c, (word_lcount.get(c) orelse 0)+1);
     }
 
     var stdout_buf: [4096]u8 = undefined;
@@ -32,8 +34,9 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
     var is_correct = false;
 
     var correct_lcount = std.hash_map.AutoHashMapUnmanaged(u8, usize).empty;
+    try correct_lcount.ensureTotalCapacity(allocator, 5);
     defer correct_lcount.deinit(allocator);
-    var alloc_writer = std.Io.Writer.Allocating.init(allocator);
+    var alloc_writer = try std.Io.Writer.Allocating.initCapacity(allocator, 6);
     defer alloc_writer.deinit();
     const letter_colors = try allocator.alloc(u2, word.len);
     defer allocator.free(letter_colors);
@@ -71,12 +74,12 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
             }
             if (gc != wc) {
                 letter_colors[i] = 1;
-                try correct_lcount.put(allocator, gc, (correct_lcount.get(gc) orelse 0)+1);
+                correct_lcount.putAssumeCapacity(gc, (correct_lcount.get(gc) orelse 0)+1);
                 continue;
             }
             if (gc == wc) {
                 letter_colors[i] = 2;
-                try correct_lcount.put(allocator, gc, (correct_lcount.get(gc) orelse 0)+1);
+                correct_lcount.putAssumeCapacity(gc, (correct_lcount.get(gc) orelse 0)+1);
                 continue;
             }
             letter_colors[i] = 0;
@@ -85,6 +88,7 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         for (guess, letter_colors) |gc, *let_col| {
             if (let_col.* == 1 and correct_lcount.get(gc).? > word_lcount.get(gc).?) {
                 let_col.* = 0;
+                correct_lcount.putAssumeCapacity(gc, correct_lcount.get(gc).?-1);
             }
         }
 
