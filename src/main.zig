@@ -46,7 +46,7 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         try stdout.flush();
 
         _ = try stdin.streamDelimiter(&alloc_writer.writer, '\n');
-        _ = try stdin.takeByte();
+        stdin.tossBuffered();
         var guess = alloc_writer.written();
 
         if (guess[guess.len-1] == '\r') {
