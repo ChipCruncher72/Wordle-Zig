@@ -35,6 +35,8 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
     defer correct_lcount.deinit(allocator);
     var alloc_writer = std.Io.Writer.Allocating.init(allocator);
     defer alloc_writer.deinit();
+    const letter_colors = try allocator.alloc(u2, word.len);
+    defer allocator.free(letter_colors);
 
     while (attempts <= 6) {
         try stdout.print("Guess a {} letter word: ", .{word.len});
@@ -62,9 +64,6 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         }
 
         // 0 is grey, 1 is yellow, 2 is green
-        const letter_colors = try allocator.alloc(u2, word.len);
-        defer allocator.free(letter_colors);
-
         for (guess, word, 0..) |gc, wc, i| {
             if (!std.mem.containsAtLeastScalar(u8, word, 1, gc)) {
                 letter_colors[i] = 0;
