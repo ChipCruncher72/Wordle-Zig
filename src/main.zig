@@ -30,18 +30,22 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
 
     var attempts: usize = 1;
     var is_correct = false;
+
+    var correct_lcount = std.hash_map.AutoHashMapUnmanaged(u8, usize).empty;
+    defer correct_lcount.deinit(allocator);
+    var guess: std.ArrayList(u8) = undefined;
+    defer guess.deinit(allocator);
+
     while (attempts <= 6) {
         try stdout.print("Guess a {} letter word: ", .{word.len});
         try stdout.flush();
 
-        var guess: std.ArrayList(u8) = undefined;
         {
             var alloc_writer = std.Io.Writer.Allocating.init(allocator);
            _ = try stdin.streamDelimiter(&alloc_writer.writer, '\n');
            _ = try stdin.takeByte();
             guess = alloc_writer.toArrayList();
         }
-        defer guess.deinit(allocator);
         if (guess.getLastOrNull() == '\r') {
             _ = guess.pop();
         }
@@ -59,9 +63,6 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
             break;
         }
 
-        var correct_lcount = std.hash_map.AutoHashMapUnmanaged(u8, usize).empty;
-        defer correct_lcount.deinit(allocator);
-
         // 0 is grey, 1 is yellow, 2 is green
         const letter_colors = try allocator.alloc(u2, word.len);
         defer allocator.free(letter_colors);
@@ -71,7 +72,7 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
                 letter_colors[i] = 0;
                 continue;
             }
-            if ((correct_lcount.get(gc) orelse 0) < word_lcount.get(gc).? and gc != wc) {
+            if (gc != wc) {
                 letter_colors[i] = 1;
                 try correct_lcount.put(allocator, gc, (correct_lcount.get(gc) orelse 0)+1);
                 continue;
@@ -79,18 +80,15 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
             if (gc == wc) {
                 letter_colors[i] = 2;
                 try correct_lcount.put(allocator, gc, (correct_lcount.get(gc) orelse 0)+1);
-                if (correct_lcount.get(gc).? > word_lcount.get(gc).?) {
-                    for (letter_colors[0..i], 0..) |let_col, ii| {
-                        if (let_col == 1 and guess.items[ii] == gc) {
-                            letter_colors[ii] = 0;
-                            try correct_lcount.put(allocator, gc, correct_lcount.get(gc).?-1);
-                            break;
-                        }
-                    }
-                }
                 continue;
             }
             letter_colors[i] = 0;
+        }
+
+        for (guess.items, letter_colors) |gc, *let_col| {
+            if (let_col.* == 1 and correct_lcount.get(gc).? > word_lcount.get(gc).?) {
+                let_col.* = 0;
+            }
         }
 
         try stdout.writeAll("\x1b[30m");
@@ -107,6 +105,9 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         try stdout.writeByte('\n');
 
         attempts += 1;
+
+        guess.clearRetainingCapacity();
+        correct_lcount.clearRetainingCapacity();
     }
 
     if (is_correct) {
