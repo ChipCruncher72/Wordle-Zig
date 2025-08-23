@@ -124,7 +124,7 @@ pub fn main() !void {
         return error.NeedsColor;
     }
 
-    var cli = std.http.Client{
+    var cli: std.http.Client = .{
         .allocator = allocator,
     };
     defer cli.deinit();
