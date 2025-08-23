@@ -33,33 +33,31 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
 
     var correct_lcount = std.hash_map.AutoHashMapUnmanaged(u8, usize).empty;
     defer correct_lcount.deinit(allocator);
-    var guess: std.ArrayList(u8) = undefined;
-    defer guess.deinit(allocator);
+    var alloc_writer = std.Io.Writer.Allocating.init(allocator);
+    defer alloc_writer.deinit();
 
     while (attempts <= 6) {
         try stdout.print("Guess a {} letter word: ", .{word.len});
         try stdout.flush();
 
-        {
-            var alloc_writer = std.Io.Writer.Allocating.init(allocator);
-           _ = try stdin.streamDelimiter(&alloc_writer.writer, '\n');
-           _ = try stdin.takeByte();
-            guess = alloc_writer.toArrayList();
-        }
-        if (guess.getLastOrNull() == '\r') {
-            _ = guess.pop();
+        _ = try stdin.streamDelimiter(&alloc_writer.writer, '\n');
+        _ = try stdin.takeByte();
+        var guess = alloc_writer.written();
+
+        if (guess[guess.len-1] == '\r') {
+            guess.len -= 1;
         }
 
-        _ = std.ascii.upperString(guess.items, guess.items);
+        _ = std.ascii.upperString(guess, guess);
 
-        if (guess.items.len != word.len) {
+        if (guess.len != word.len) {
             try stdout.print("The word must contain {} letters!\n", .{word.len});
             continue;
         }
 
-        if (std.mem.eql(u8, guess.items, word)) {
+        if (std.mem.eql(u8, guess, word)) {
             is_correct = true;
-            try stdout.print("\x1b[30;42m{s}\x1b[0m\n", .{guess.items});
+            try stdout.print("\x1b[30;42m{s}\x1b[0m\n", .{guess});
             break;
         }
 
@@ -67,7 +65,7 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         const letter_colors = try allocator.alloc(u2, word.len);
         defer allocator.free(letter_colors);
 
-        for (guess.items, word, 0..) |gc, wc, i| {
+        for (guess, word, 0..) |gc, wc, i| {
             if (!std.mem.containsAtLeastScalar(u8, word, 1, gc)) {
                 letter_colors[i] = 0;
                 continue;
@@ -85,14 +83,14 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
             letter_colors[i] = 0;
         }
 
-        for (guess.items, letter_colors) |gc, *let_col| {
+        for (guess, letter_colors) |gc, *let_col| {
             if (let_col.* == 1 and correct_lcount.get(gc).? > word_lcount.get(gc).?) {
                 let_col.* = 0;
             }
         }
 
         try stdout.writeAll("\x1b[30m");
-        for (guess.items, letter_colors) |c, col| {
+        for (guess, letter_colors) |c, col| {
             switch (col) {
                 0 => try stdout.writeAll("\x1b[100m"),
                 1 => try stdout.writeAll("\x1b[43m"),
@@ -106,7 +104,7 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
 
         attempts += 1;
 
-        guess.clearRetainingCapacity();
+        alloc_writer.clearRetainingCapacity();
         correct_lcount.clearRetainingCapacity();
     }
 
