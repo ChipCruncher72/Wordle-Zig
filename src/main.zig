@@ -42,11 +42,14 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
     defer allocator.free(letter_colors);
 
     while (attempts <= 6) {
+        defer alloc_writer.clearRetainingCapacity();
+        defer correct_lcount.clearRetainingCapacity();
+
         try stdout.print("Guess a {} letter word: ", .{word.len});
         try stdout.flush();
 
         _ = try stdin.streamDelimiter(&alloc_writer.writer, '\n');
-        stdin.tossBuffered();
+        stdin.toss(1);
         var guess = alloc_writer.written();
 
         if (guess[guess.len-1] == '\r') {
@@ -101,9 +104,6 @@ pub fn playWithWord(allocator: std.mem.Allocator, word: []const u8) !void {
         try stdout.writeByte('\n');
 
         attempts += 1;
-
-        alloc_writer.clearRetainingCapacity();
-        correct_lcount.clearRetainingCapacity();
     }
 
     if (is_correct) {
